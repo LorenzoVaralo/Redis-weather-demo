@@ -12,10 +12,10 @@ app.use(express.json());
 
 // Redis client setup
 const redisClient = createClient({
-  url: REDIS_URL
+  url: REDIS_URL,
 });
 
-redisClient.on('error', (err) => {
+redisClient.on('error', err => {
   console.error('Redis Client Error:', err);
 });
 
@@ -42,7 +42,7 @@ app.get('/weather/current/:lat/:lon', async (req, res) => {
     const { lat, lon } = req.params;
     const latitude = parseFloat(lat);
     const longitude = parseFloat(lon);
-    
+
     if (isNaN(latitude) || isNaN(longitude)) {
       return res.status(400).json({ error: 'Invalid latitude or longitude' });
     }
@@ -50,31 +50,35 @@ app.get('/weather/current/:lat/:lon', async (req, res) => {
     const cacheKey = `weather:current:${lat}:${lon}`;
 
     if (redisClient.isOpen) {
-        // Check if weather data is cached
-        const cached = await redisClient.get(cacheKey);
-        
-        if (cached) {
+      // Check if weather data is cached
+      const cached = await redisClient.get(cacheKey);
+
+      if (cached) {
         const responseTime = ((Date.now() - startTime) / 1000).toFixed(3);
         console.log(`Cache hit - response time: ${responseTime}s`);
 
-        return res.json({ 
-            ...JSON.parse(cached), 
-            source: 'cache' 
+        return res.json({
+          ...JSON.parse(cached),
+          source: 'cache',
         });
-        }
+      }
     }
 
     // Fetch fresh data from weather service
-    const weatherData = await weatherService.getCurrentWeather(latitude, longitude, 'America/Sao_Paulo');
-    
+    const weatherData = await weatherService.getCurrentWeather(
+      latitude,
+      longitude,
+      'America/Sao_Paulo'
+    );
+
     await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(weatherData));
 
     const responseTime = ((Date.now() - startTime) / 1000).toFixed(3);
     console.log(`Cache Miss - response time: ${responseTime}s`);
 
-    res.json({ 
-      ...weatherData, 
-      source: 'api' 
+    res.json({
+      ...weatherData,
+      source: 'api',
     });
   } catch (error) {
     console.error('Error getting current weather:', error);
@@ -86,17 +90,17 @@ app.get('/weather/current/:lat/:lon', async (req, res) => {
 app.get('/health', async (req, res) => {
   try {
     await redisClient.ping();
-    res.json({ 
+    res.json({
       status: 'healthy',
       redis: 'connected',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    res.status(503).json({ 
+    res.status(503).json({
       status: 'unhealthy',
       redis: 'disconnected',
       error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });
@@ -117,7 +121,7 @@ process.on('SIGTERM', async () => {
 // Start server
 async function startServer() {
   await initializeRedis();
-  
+
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     console.log(`Redis URL: ${REDIS_URL}`);
