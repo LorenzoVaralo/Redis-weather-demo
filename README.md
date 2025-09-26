@@ -1,167 +1,50 @@
-# Redis Demo Project
+# Redis Weather Cache
 
-A simple TypeScript project demonstrating Redis integration with Express.js, fully containerized with Docker.
+TypeScript Express.js application with Redis caching for OpenMeteo weather API data.
 
 ## Features
 
-- TypeScript Express.js application
-- Redis integration for caching and data storage
-- Docker containers for both the application and Redis
-- Health checks and graceful shutdowns
-- RESTful API endpoints for Redis operations
+- OpenMeteo weather API integration
+- Redis caching layer with configurable TTL
+- Dockerized deployment with optimized Redis startup
+- Fault tolerance (continues without Redis)
 
-## Project Structure
+## Quick Start
 
+```bash
+docker-compose up --build -d
+curl "http://localhost:3000/weather/current/40.7128/-74.0060"
 ```
-redisDemo/
-├── src/
-│   └── index.ts          # Main application file
-├── dist/                 # Compiled JavaScript files
-├── docker-compose.yml    # Docker Compose configuration
-├── Dockerfile           # Application Docker image
-├── package.json         # Node.js dependencies and scripts
-├── tsconfig.json        # TypeScript configuration
-└── README.md           # This file
-```
-
-## Prerequisites
-
-- Docker and Docker Compose
-- Node.js 18+ (for local development)
-
-## Quick Start with Docker
-
-1. **Clone and navigate to the project:**
-   ```bash
-   cd redisDemo
-   ```
-
-2. **Start the application with Docker Compose:**
-   ```bash
-   docker-compose up --build
-   ```
-
-   This will:
-   - Build the TypeScript application
-   - Start a Redis container
-   - Start the application container
-   - Make the API available at http://localhost:3000
-
-3. **Test the API:**
-   ```bash
-   # Health check
-   curl http://localhost:3000/health
-   
-   # Set a value
-   curl -X POST http://localhost:3000/set/mykey \
-     -H "Content-Type: application/json" \
-     -d '{"value":"Hello Redis!"}'
-   
-   # Get a value
-   curl http://localhost:3000/get/mykey
-   
-   # List all keys
-   curl http://localhost:3000/keys
-   ```
-
-## Local Development
-
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-2. **Start Redis locally (optional - if you want to run Redis outside Docker):**
-   ```bash
-   docker run -d -p 6379:6379 redis:7-alpine
-   ```
-
-3. **Run in development mode:**
-   ```bash
-   npm run dev
-   ```
 
 ## API Endpoints
 
-- `GET /` - API status and Redis connection status
-- `GET /health` - Health check endpoint
-- `POST /set/:key` - Set a key-value pair
-  - Body: `{"value": "your-value"}`
-- `GET /get/:key` - Get value by key
-- `DELETE /delete/:key` - Delete a key
-- `GET /keys` - List all keys
+| Endpoint | Description | Cache TTL |
+|----------|-------------|-----------|
+| `GET /weather/current/:lat/:lon` | Current weather by coordinates | 10m |
+| `GET /health` | Application health check | - |
 
-## Available Scripts
+## Configuration
 
-- `npm run build` - Compile TypeScript to JavaScript
-- `npm start` - Start the compiled application
-- `npm run dev` - Start in development mode with ts-node
-- `npm test` - Run tests (when implemented)
-- `npm run docker:build` - Build Docker image
-- `npm run docker:run` - Run with Docker Compose
+- `PORT`: Server port (default: 3000)
+- `REDIS_URL`: Redis connection string (default: redis://localhost:6379)
 
-## Docker Commands
+## Development
 
 ```bash
-# Start services
-docker-compose up
+# Start Redis container first
+docker-compose up redis -d
 
-# Start services in background
-docker-compose up -d
-
-# Rebuild and start
-docker-compose up --build
-
-# Stop services
-docker-compose down
-
-# Stop services and remove volumes
-docker-compose down -v
-
-# View logs
-docker-compose logs app
-docker-compose logs redis
+# Then run the app locally
+npm install
+npm run dev        # Development mode
+npm run build      # Production build
 ```
 
-## Environment Variables
+## Architecture
 
-- `PORT` - Server port (default: 3000)
-- `REDIS_URL` - Redis connection URL (default: redis://localhost:6379)
-- `NODE_ENV` - Node environment (development/production)
+- Express.js API server with TypeScript
+- Redis caching with graceful degradation
+- OpenMeteo API integration (no API key required)
+- Docker containers with health checks
 
-## Docker Configuration
-
-### Application Container
-- Based on Node.js 18 Alpine
-- Exposes port 3000
-- Includes health checks
-- Auto-restarts on failure
-
-### Redis Container
-- Uses Redis 7 Alpine
-- Persistent data storage
-- Health checks with redis-cli ping
-- Exposes port 6379
-
-## Stopping the Application
-
-```bash
-# Stop Docker Compose services
-docker-compose down
-
-# Or use Ctrl+C if running in foreground
-```
-
-## Troubleshooting
-
-1. **Port conflicts:** If port 3000 or 6379 are in use, modify the ports in `docker-compose.yml`
-2. **Permission issues:** Ensure Docker has proper permissions
-3. **Connection errors:** Check that Redis container is healthy using `docker-compose logs redis`
-
-## Next Steps
-
-- Add authentication
-- Implement data models
-- Add comprehensive tests
-- Set up CI/CD pipeline
-- Add monitoring and logging
+Redis failures are handled gracefully - the application continues serving weather data directly from the API.
