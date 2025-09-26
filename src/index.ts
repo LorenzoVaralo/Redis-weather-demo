@@ -47,18 +47,21 @@ app.get('/weather/current/:lat/:lon', async (req, res) => {
       return res.status(400).json({ error: 'Invalid latitude or longitude' });
     }
 
-    // Check if weather data is cached
     const cacheKey = `weather:current:${lat}:${lon}`;
-    const cached = await redisClient.get(cacheKey);
-    
-    if (cached) {
-    const responseTime = ((Date.now() - startTime) / 1000).toFixed(10);
-    console.log(`Cache hit - response time: ${responseTime}s`);
 
-      return res.json({ 
-        ...JSON.parse(cached), 
-        source: 'cache' 
-      });
+    if (redisClient.isOpen) {
+        // Check if weather data is cached
+        const cached = await redisClient.get(cacheKey);
+        
+        if (cached) {
+        const responseTime = ((Date.now() - startTime) / 1000).toFixed(3);
+        console.log(`Cache hit - response time: ${responseTime}s`);
+
+        return res.json({ 
+            ...JSON.parse(cached), 
+            source: 'cache' 
+        });
+        }
     }
 
     // Fetch fresh data from weather service
@@ -66,7 +69,7 @@ app.get('/weather/current/:lat/:lon', async (req, res) => {
     
     await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(weatherData));
 
-    const responseTime = ((Date.now() - startTime) / 1000).toFixed(10);
+    const responseTime = ((Date.now() - startTime) / 1000).toFixed(3);
     console.log(`Cache Miss - response time: ${responseTime}s`);
 
     res.json({ 

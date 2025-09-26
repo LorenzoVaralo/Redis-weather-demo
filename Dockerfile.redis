@@ -1,0 +1,11 @@
+# Optional: Custom Redis Dockerfile for maximum startup speed
+FROM redis:7-alpine
+
+# Copy optimized configuration
+COPY redis.conf /usr/local/etc/redis/redis.conf
+
+# Set proper permissions
+RUN chown redis:redis /usr/local/etc/redis/redis.conf
+
+# Use the custom config by default
+CMD ["redis-server", "/usr/local/etc/redis/redis.conf"]

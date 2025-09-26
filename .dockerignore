@@ -9,3 +9,6 @@ README.md
 coverage
 .vscode
 *.md
+# Don't ignore redis config files
+!redis.conf
+!Dockerfile.redis
