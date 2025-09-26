@@ -1,9 +1,11 @@
 import express from 'express';
 import { createClient } from 'redis';
+import { weatherService } from './weatherService';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const CACHE_TTL = 600; // Cache for 10 minutes (600 seconds)
 
 // Middleware
 app.use(express.json());
@@ -32,85 +34,48 @@ async function initializeRedis() {
   }
 }
 
-// Routes
-app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Redis Demo API is running!',
-    redis_connected: redisClient.isOpen
-  });
-});
-
-// Set a key-value pair in Redis
-app.post('/set/:key', async (req, res) => {
+// Weather endpoints
+// Get current weather by coordinates
+app.get('/weather/current/:lat/:lon', async (req, res) => {
   try {
-    const { key } = req.params;
-    const { value } = req.body;
+    const startTime = Date.now();
+    const { lat, lon } = req.params;
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lon);
     
-    if (!value) {
-      return res.status(400).json({ error: 'Value is required in request body' });
+    if (isNaN(latitude) || isNaN(longitude)) {
+      return res.status(400).json({ error: 'Invalid latitude or longitude' });
     }
 
-    await redisClient.set(key, JSON.stringify(value));
-    res.json({ 
-      success: true, 
-      message: `Key '${key}' set successfully`,
-      key,
-      value
-    });
-  } catch (error) {
-    console.error('Error setting key:', error);
-    res.status(500).json({ error: 'Failed to set key in Redis' });
-  }
-});
-
-// Get a value from Redis by key
-app.get('/get/:key', async (req, res) => {
-  try {
-    const { key } = req.params;
-    const value = await redisClient.get(key);
+    // Check if weather data is cached
+    const cacheKey = `weather:current:${lat}:${lon}`;
+    const cached = await redisClient.get(cacheKey);
     
-    if (value === null) {
-      return res.status(404).json({ error: `Key '${key}' not found` });
+    if (cached) {
+    const responseTime = ((Date.now() - startTime) / 1000).toFixed(10);
+    console.log(`Cache hit - response time: ${responseTime}s`);
+
+      return res.json({ 
+        ...JSON.parse(cached), 
+        source: 'cache' 
+      });
     }
 
-    res.json({ 
-      key,
-      value: JSON.parse(value)
-    });
-  } catch (error) {
-    console.error('Error getting key:', error);
-    res.status(500).json({ error: 'Failed to get key from Redis' });
-  }
-});
-
-// Delete a key from Redis
-app.delete('/delete/:key', async (req, res) => {
-  try {
-    const { key } = req.params;
-    const result = await redisClient.del(key);
+    // Fetch fresh data from weather service
+    const weatherData = await weatherService.getCurrentWeather(latitude, longitude, 'America/Sao_Paulo');
     
-    if (result === 0) {
-      return res.status(404).json({ error: `Key '${key}' not found` });
-    }
+    await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(weatherData));
+
+    const responseTime = ((Date.now() - startTime) / 1000).toFixed(10);
+    console.log(`Cache Miss - response time: ${responseTime}s`);
 
     res.json({ 
-      success: true, 
-      message: `Key '${key}' deleted successfully`
+      ...weatherData, 
+      source: 'api' 
     });
   } catch (error) {
-    console.error('Error deleting key:', error);
-    res.status(500).json({ error: 'Failed to delete key from Redis' });
-  }
-});
-
-// Get all keys
-app.get('/keys', async (req, res) => {
-  try {
-    const keys = await redisClient.keys('*');
-    res.json({ keys });
-  } catch (error) {
-    console.error('Error getting keys:', error);
-    res.status(500).json({ error: 'Failed to get keys from Redis' });
+    console.error('Error getting current weather:', error);
+    res.status(500).json({ error: 'Failed to fetch current weather' });
   }
 });
 
