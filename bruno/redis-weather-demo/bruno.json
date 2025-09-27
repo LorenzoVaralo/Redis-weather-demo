@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "redis-weather-demo",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

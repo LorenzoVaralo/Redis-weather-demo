@@ -43,13 +43,15 @@ app.get('/weather/current/:lat/:lon', async (req, res) => {
     const latitude = parseFloat(lat);
     const longitude = parseFloat(lon);
 
+    const isCacheDisabled = req.query.disableCache === 'true';
+
     if (isNaN(latitude) || isNaN(longitude)) {
       return res.status(400).json({ error: 'Invalid latitude or longitude' });
     }
 
     const cacheKey = `weather:current:${lat}:${lon}`;
 
-    if (redisClient.isOpen) {
+    if (redisClient.isOpen && !isCacheDisabled) {
       // Check if weather data is cached
       const cached = await redisClient.get(cacheKey);
 

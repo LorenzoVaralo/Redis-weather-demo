@@ -1,0 +1,15 @@
+meta {
+  name: Get Current Weather
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://localhost:3000/weather/current/-29.5849/-51.08282
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}
